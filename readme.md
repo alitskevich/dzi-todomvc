@@ -3,12 +3,10 @@
 > Dzi-UI is a minimalistic UI framework 
 > that powers the front-end with the true dynamic components.
 
-![](https://github.com/tastejs/todomvc-app-css/raw/master/screenshot.png)
-
 ## Resources
 
-- [Website](http://linkedin.com/alitskevich/dzi-ui)
-- [Documentation](https://github.com/alitskevich/dzi-ui/blob/master/README.md)
+- [Website](https://alitskevich.github.io/dzi-todomvc/)
+- [Documentation](https://github.com/alitskevich/dzi-ui/)
 
 ## Implementation
 
