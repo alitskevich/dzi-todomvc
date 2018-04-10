@@ -21,13 +21,13 @@
         </Filter>
       </ui:fragment>
     </section>
-    <ui:footerType hint=":hint" hasItemsShown="{{shownItemsCount}}"/>
+    <ui:footerType hint=":hint"/>
   </ui:fragment>
 </script>
 
 <script type="text/x-template" id="Header">
   <header class="header">
-    <h1>{{title}}</h1>
+    <h1>{{title|upper}}</h1>
     <input type="text" class="new-todo" placeholder=":new_todo_hint" autofocus="true" enter="-> add"/> 
   </header>
 </script>
@@ -54,11 +54,16 @@
   </footer>
 </script>
 
-<script type="text/x-template" id="AttributionInfo">
+<script type="text/x-template" id="Attribution">
   <footer class="info">
-    <p ui:if="hasItemsShown">{{hint}}</p>
     <p>Created by <a href="https://github.com/alitskevich/dzi-todomvc">alitskevich</a></p>
     <p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+  </footer>
+</script>
+
+<script type="text/x-template" id="Hint">
+  <footer class="info">
+    <p>{{hint}}</p>
   </footer>
 </script>
 
@@ -74,5 +79,6 @@
 </script>
 
 <body></body>
+<script type="application/javascript" src="vendor/dzi/index.js"></script>
 <script type="module" src="js/app.js"></script>
 </html>
