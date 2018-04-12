@@ -5,6 +5,8 @@
   "private": true,
   "dependencies": {
   },
+  "author": "http://linkedin.com/alitskevich",
+  "license": "MIT",
   "scripts": {
     "start": "http-server"
   }
