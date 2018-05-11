@@ -1,10 +1,6 @@
 # Dzi-UI • [TodoMVC](http://todomvc.com)
 
-This tod-app is created to give insight on
-
-- What is a UI framework, why, how it works.
-- What is a Component, property binding, composition
-- What are side-effects, observer pattern, redux-like
+The todo-app is created to give insight on what is a UI framework, Components, composition, property binding, side-effects.
 
 ## Resources
 

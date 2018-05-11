@@ -122,7 +122,7 @@
     // hook on init
     init () {
       // use hash as a filter key. invoke immediately.
-      const onhash = () => this.dispatch('filter', {filterId: window.location.hash.slice(1) || FILTERS[0].id})
+      const onhash = () => this.emit('filter', {filterId: window.location.hash.slice(1) || FILTERS[0].id})
       window.onhashchange = onhash
       onhash()
     }
@@ -132,15 +132,16 @@
       this.assign({}) /* force render */
       this.subscribers.forEach(({cb, key}) => cb(null, this.get(key)))
     }
-    // redux-like event-driven
-    dispatch (key, payload) {
+    // emit actions
+    emit (key, payload) {
       this.update(ACTIONS[key](this.data, payload))
     }
-    unsubscribe (subscriber) {
-      this.subscribers.delete(subscriber)
-    }
-    subscribe (key, subscriber, cb) {
-      this.subscribers.set(subscriber, {cb, key})
+    // allows data access
+    fetch (key, target, cb) {
+      this.subscribers.set(target, {cb, key})
+      if (!this.subscribers.has(target)){
+        target.defer(()=>this.subscribers.delete(target))
+      }
       cb(null, this.get(key))
     }
     // properties:
