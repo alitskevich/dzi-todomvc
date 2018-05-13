@@ -78,9 +78,8 @@
   </li>
 </script>
 
-<body></body>
-<script type="application/javascript" src="vendor/dzi/index.js"></script>
 <script type="module">
+  import {launch} from "./vendor/dzi/index.js"
   // application identity
   const KEY  = 'TODO:1'
   // filters metadata
@@ -107,7 +106,7 @@
     filters: FILTERS 
   }
   // placeholders pipes 
-  const PIPES =  { 
+  const PIPES = { 
     upper : s=>(''+s).toUpperCase(),
     capital : s=> !s ? '' : s[0].toUpperCase() + s.slice(1)
   }
@@ -116,7 +115,7 @@
     constructor () {
       this.subscribers = new Map()
       this.data = JSON.parse(localStorage.getItem(KEY)||'null') || { items: [], nextId:1 }
-      this.res = (key) => R[key] || (R[key] = key.split('_').map(s => s.slice(0, 1).toUpperCase() + s.slice(1)).join(' '))
+      this.resource = (key) => R[key] || (R[key] = key.split('_').map(s => s.slice(0, 1).toUpperCase() + s.slice(1)).join(' '))
       this.pipes = PIPES
     }
     // hook on init
@@ -136,7 +135,7 @@
     emit (key, payload) {
       this.update(ACTIONS[key](this.data, payload))
     }
-    // allows data access
+    // data access
     fetch (key, target, cb) {
       this.subscribers.set(target, {cb, key})
       if (!this.subscribers.has(target)){
@@ -168,9 +167,9 @@
     }
     // resolve dynamic component type `<ui:footerType .../>
     getFooterType() {
-      return this.get('shownItemsCount') > 0 ? 'Hint' : 'Attribution' 
+      return this.getShownItemsCount() > 0 ? 'Hint' : 'Attribution' 
     }
   }
-  Dzi.launch(TodoApp)
+  launch(TodoApp)
 </script>
 </html>
