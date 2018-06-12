@@ -9,5 +9,14 @@
   "license": "MIT",
   "scripts": {
     "start": "http-server"
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "ignore": [
+      "**/out/",
+      "/dist/",
+      "/node_modules/",
+      "tmp.js"
+    ]
   }
 }

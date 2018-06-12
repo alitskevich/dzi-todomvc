@@ -14,7 +14,7 @@
     <section class="todoapp">
       <Header title=":title"/>
       <ui:fragment ui:if="notEmpty" >
-        <Main data="<- shownItems"/>
+        <Main/>
         <Filter current="{{filterId}}">
           <span class="todo-count"><strong>{{itemsLeft}}</strong> item(s) left</span>
           <button class="clear-completed" ui:key="right" ui:if="hasCompleted" click="-> purge">Clear completed</button>
@@ -27,7 +27,7 @@
 
 <script type="text/x-template" id="Header">
   <header class="header">
-    <h1>{{title}}</h1>
+    <h1>{{title|upper}}</h1>
     <input type="text" class="new-todo" placeholder=":new_todo_hint" autofocus="true" enter="-> add"/> 
   </header>
 </script>
@@ -36,10 +36,14 @@
   <section class="main">
     <input id="toggle-all" class="toggle-all" type="checkbox" toggle="-> toggle"/>
     <label for="toggle-all">Mark all as complete</label>
-    <ul class="todo-list">
-      <TodoItem ui:props="{{item}}" ui:each="item of data"/>
-    </ul>
+    <TodoList data="<- shownItems"/>
   </section>
+</script>
+
+<script type="text/x-template" id="TodoList">
+  <ul class="todo-list">
+    <TodoItem ui:props="{{item}}" ui:each="item of data"/>
+  </ul>
 </script>
 
 <script type="text/x-template" id="Filter">
@@ -47,7 +51,7 @@
     <ui:transclude/>
     <ul class="filters">
       <li ui:each="filter of :filters">
-        <a class="selected:{{current}}={{filter.id}}" id="{{filter.id}}" href="#{{filter.id}}">{{filter.id|capital}}</a>
+        <a class="selected:{{current}}={{filter.id}}" id="{{filter.id}}" href="#{{filter.id}}">{{filter.id|capitalize}}</a>
       </li>
     </ul>
     <ui:transclude key="right"/>
@@ -88,8 +92,9 @@
     { id:'active',values: [false] },
     { id:'completed', values: [true] } 
   ]
+  const capitalize = s => !s ? '' : s[0].toUpperCase() + s.slice(1)
   //pure actions:
-  const ACTIONS={
+  const ACTIONS = {
     inverse: ({items}, { id }) => ({ items: items.map(e => {if(e.id===id) { e.completed=!e.completed }; return e}) }),
     save: ({items}, { id, value }) => ({ items: (!value) ? items.filter(e => e.id !== id) : items.map(e => {if(e.id===id) { e.name = value }; return e}) }),
     rm: ({items}, { id }) =>({ items: items.filter(e => e.id !== id) }) ,
@@ -108,44 +113,34 @@
   // placeholders pipes 
   const PIPES = { 
     upper : s=>(''+s).toUpperCase(),
-    capital : s=> !s ? '' : s[0].toUpperCase() + s.slice(1)
+    capitalize
   }
   // top-level app component
-  class TodoApp {
+  class TodoStore {
     constructor () {
       this.subscribers = new Map()
       this.data = JSON.parse(localStorage.getItem(KEY)||'null') || { items: [], nextId:1 }
-      this.resource = (key) => R[key] || (R[key] = key.split('_').map(s => s.slice(0, 1).toUpperCase() + s.slice(1)).join(' '))
-      this.pipes = PIPES
     }
-    // hook on init
-    init () {
-      // use hash as a filter key. invoke immediately.
-      const onhash = () => this.emit('filter', {filterId: window.location.hash.slice(1) || FILTERS[0].id})
-      window.onhashchange = onhash
-      onhash()
-    }
-    update(delta){
+    assign(delta, cb) {
       Object.assign(this.data, delta)
       localStorage.setItem(KEY , JSON.stringify(this.data))
-      this.assign({}) /* force render */
-      this.subscribers.forEach(({cb, key}) => cb(null, this.get(key)))
+      cb && cb()
+      this.subscribers.forEach(fn => fn())
     }
-    // emit actions
-    emit (key, payload) {
-      this.update(ACTIONS[key](this.data, payload))
+    dispatch ({key, payload, cb}) {
+      this.assign(ACTIONS[key](this.data, payload), cb)
     }
-    // data access
-    fetch (key, target, cb) {
-      this.subscribers.set(target, {cb, key})
+    subscribe (key, target, cb) {
       if (!this.subscribers.has(target)){
         target.defer(()=>this.subscribers.delete(target))
       }
-      cb(null, this.get(key))
+      const fn = () => cb(null, this.get(key))
+      this.subscribers.set(target, fn)
+      fn()
     }
     // properties:
     get (key) {
-      const getter = this['get' + PIPES.capital(key)]
+      const getter = this['get' + capitalize(key)]
       return getter ? getter.call(this) : key.split('.').reduce((r, k) => !r ? null : r[k], this.data)
     }
     getShownItems() {
@@ -168,6 +163,34 @@
     // resolve dynamic component type `<ui:footerType .../>
     getFooterType() {
       return this.getShownItemsCount() > 0 ? 'Hint' : 'Attribution' 
+    }
+  }
+  // top-level app component
+  class TodoApp {
+    constructor () {
+      this.store = new TodoStore()
+      this.data = JSON.parse(localStorage.getItem(KEY)||'null') || { items: [], nextId:1 }
+      this.resource = (key) => R[key] || (R[key] = key.split('_').map(capitalize).join(' '))
+      this.pipes = PIPES
+    }
+    // hook on init
+    init () {
+      // use hash as a filter key. invoke immediately.
+      const onhash = () => this.emit('filter', {filterId: window.location.hash.slice(1) || FILTERS[0].id})
+      window.onhashchange = onhash
+      onhash()
+    }
+    // emit actions
+    emit (key, payload) {
+      this.store.dispatch({key, payload, cb: () => this.render()})
+    }
+    // data access
+    fetchInto (key, target, propName) {
+      this.store.subscribe(key, target, (error, r) => target.assign({error, [propName]: r}))
+    }
+    // properties:
+    get (key) {
+      return this.store.get(key)
     }
   }
   launch(TodoApp)
