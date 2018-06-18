@@ -118,6 +118,7 @@
   // top-level app component
   class TodoStore {
     constructor () {
+      this.counter = 0
       this.subscribers = new Map()
       this.data = JSON.parse(localStorage.getItem(KEY)||'null') || { items: [], nextId:1 }
     }
@@ -127,16 +128,15 @@
       cb && cb()
       this.subscribers.forEach(fn => fn())
     }
-    dispatch ({key, payload, cb}) {
-      this.assign(ACTIONS[key](this.data, payload), cb)
+    dispatch (url, payload, cb) {
+      this.assign(ACTIONS[url](this.data, payload), cb)
     }
-    subscribe (key, target, cb) {
-      if (!this.subscribers.has(target)){
-        target.defer(()=>this.subscribers.delete(target))
-      }
+    subscribe (key, cb) {
       const fn = () => cb(null, this.get(key))
-      this.subscribers.set(target, fn)
+      const uuid = this.counter++
+      this.subscribers.set(uuid, fn)
       fn()
+      return () => this.subscribers.delete(uuid)
     }
     // properties:
     get (key) {
@@ -169,7 +169,6 @@
   class TodoApp {
     constructor () {
       this.store = new TodoStore()
-      this.data = JSON.parse(localStorage.getItem(KEY)||'null') || { items: [], nextId:1 }
       this.resource = (key) => R[key] || (R[key] = key.split('_').map(capitalize).join(' '))
       this.pipes = PIPES
     }
@@ -181,12 +180,12 @@
       onhash()
     }
     // emit actions
-    emit (key, payload) {
-      this.store.dispatch({key, payload, cb: () => this.render()})
+    emit (url, payload) {
+      this.store.dispatch(url, payload, () => this.render())
     }
     // data access
-    fetchInto (key, target, propName) {
-      this.store.subscribe(key, target, (error, r) => target.assign({error, [propName]: r}))
+    fetch (url, cb) {
+      return this.store.subscribe(url, cb)
     }
     // properties:
     get (key) {
