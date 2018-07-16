@@ -12,21 +12,21 @@ const setters = {
   '#text': (e, k, v) => (e.textContent = v == null ? '' : v),
   disabled: (e, k, v) => (e[k] = v ? true : null),
   class: (e, k, v) => {
-    v = ('' + v).replace(/([a-z0-9]+):([a-z0-9.]*)(=([a-z0-9.]*))?\b/g, (_, cl, fl, hasEq, eq) => {
-      const disabled = hasEq ? fl !== eq : ['', '0', 'false', 'off'].indexOf(fl) > -1
+    v = ('' + v).replace(/([a-z0-9]+):([a-z0-9.]*)(==([a-z0-9.]*))?\b/g, (_, cl, fl, hasEq, eq) => {
+      const disabled = hasEq ? fl !== eq : ['', '0', 'false', null].indexOf(fl) > -1
       return disabled ? '' : cl
     })
     e.setAttribute(k, v)
   },
   selected: (e, k, v) => (e[k] = v ? true : null),
-  value: (e, k, v) => (e[k] = v),
+  value: (e, k, v) => (e[k] = v == null ? '' : v),
   checked: (e, k, v) => (e[k] = !!v),
   data: (e, k, v) => { e.$dataset = Object.assign({}, v) },
   'data*': (e, k, v) => { (e.$dataset || (e.$dataset = {}))[k.slice(5)] = v in values ? values[v] : v },
   'enter': function (e, key, v) {
     this.setListener('keyup', !v ? null : (ev) => {
       if (ev.keyCode === 13) {
-        this.$attributes[key].call(this.$owner.$, { value: e.value, ...e.$dataset }, ev)
+        this.$attributes[key]({ value: e.value, ...e.$dataset }, ev)
       }
       if (ev.keyCode === 13 || ev.keyCode === 27) {
         e.blur()
@@ -36,17 +36,20 @@ const setters = {
   },
   'toggle': function (e, key, v) {
     this.setListener('change', !v ? null : (ev) => {
-      this.$attributes[key].call(this.$owner.$, { value: e.checked, ...e.$dataset }, ev)
+      this.$attributes[key]({ value: e.checked, ...e.$dataset }, ev)
       return false
     })
   }
 }
-
+const comparators = {
+  value: (e, their, _) => (e.value === their),
+  data: (e, their, _) => (e.$dataset === their),
+  _: (_, their, mine) => their === mine
+}
 export class Elmnt {
-  constructor ({tag, owner}) {
+  constructor (tag) {
     this.$ = tag === '#text' ? doc.createTextNode('') : doc.createElement(tag)
     this.$attributes = {}
-    this.$owner = owner
   }
   init () {
   }
@@ -61,7 +64,7 @@ export class Elmnt {
     if (p) {
       p.removeChild(e)
     }
-    this.$elt = this.$attributes = this.$owner = this.parentElt = null
+    this.$ = this.$attributes = null
   }
   assign (delta) {
     if (this.isDone) {
@@ -71,7 +74,7 @@ export class Elmnt {
     const p = this.parentElt
     if (this.transclude) {
       e.cursor = null
-      this.renderInnerContent()
+      Elmnt.render(this, this.transclude, this.$)
       e.cursor = null
     }
     this.applyAttributes(delta)
@@ -92,7 +95,7 @@ export class Elmnt {
       }
     }
     for (let key in theirs) {
-      if (theirs.hasOwnProperty(key) && theirs[key] !== mines[key]) {
+      if (theirs.hasOwnProperty(key) && !(comparators[key] || comparators._)(e, theirs[key], mines[key])) {
         const value = theirs[key]
         const prefixP = key.indexOf('-')
         const setter = setters[prefixP === -1 ? key : key.slice(0, prefixP) + '*']
@@ -102,7 +105,7 @@ export class Elmnt {
           if (typeof value === 'function' || (this.listeners && this.listeners.has(key))) {
             const T = this
             this.setListener(key, !value ? null : (ev) => {
-              T.$attributes[key].call(T.$owner.$, {value: e.value, ...e.$dataset}, ev)
+              T.$attributes[key]({value: e.value, ...e.$dataset}, ev)
               return false
             })
           } else {
@@ -110,6 +113,9 @@ export class Elmnt {
           }
         }
       }
+    }
+    if (e.$dataset) {
+      Object.keys(e.$dataset).forEach(k => { e.dataset[k] = e.$dataset[k] })
     }
     this.$attributes = theirs
   }
@@ -136,4 +142,4 @@ export class Elmnt {
       }
     }
   }
-  }
+}

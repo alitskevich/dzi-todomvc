@@ -12,8 +12,13 @@ const FETCH_FINALIZER = (c) => {
 let COUNTER = 1
 
 export function compile ({ tag, attrs, uid, subs }) {
-  const r = { uid, type: compileType(tag), props: compileAttrs(attrs), key: attrs.get('ui:key') }
-
+  const r = {
+    uid,
+    type: compileType(tag),
+    props: compileAttrs(attrs),
+    key: attrs.get('ui:key'), // partial transclude key
+    ref: attrs.get('ui:ref') // reference key
+  }
   const aIf = attrs.get('ui:if')
   if (aIf) {
     const neg = aIf[0] === '!' ? aIf.slice(1) : null
@@ -86,11 +91,7 @@ function compileAttrs (attrs) {
               delete ev.cancel
             }
             ev.url = url
-            setTimeout(() => {
-              if (this.app) {
-                ev.cancel = this.app.fetch(ev.url, ev.cb)
-              }
-            }, 10)
+            ev.cancel = this.app.fetch(ev.url, ev.cb)
           }
         }
         return p
@@ -146,7 +147,7 @@ function compilePlaceholder (k, v) {
     return (c, p) => { p[k] = prop(c, key); return p }
   } else {
     const fnx = keys.slice(1).map(k => k.trim())
-    return (c, p) => { p[k] = fnx.reduce((r, k) => c.app.pipes[k] ? c.app.pipes[k](r, c) : r, prop(c, key)); return p }
+    return (c, p) => { p[k] = fnx.reduce((r, k) => c.app.pipes[k] ? c.app.pipes[k].call(c.$, r, key) : r, prop(c, key)); return p }
   }
 }
 
@@ -158,11 +159,17 @@ function prop (c, k) {
   let posE = k.indexOf('.')
   if (posE === -1) {
     const getter = $['get' + k[0].toUpperCase() + k.slice(1)]
-    const v = getter ? getter.call($, k) : $[k]
+    if (getter) {
+      return getter.call($, k)
+    }
+    const v = $[k]
+    if (typeof v === 'function') {
+      return (c.$bound || (c.$bound = {}))[k] || (c.$bound[k] = v.bind($))
+    }
     return v
   }
   let posB = 0
-    // dig
+  // dig
   while (posE !== -1) {
     $ = $[k.slice(posB, posE)]
     if (!$) {
